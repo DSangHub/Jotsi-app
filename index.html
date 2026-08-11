@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="theme-color" content="#0ea5e9" />
+  <title>Jotsi</title>
+  <meta name="description" content="Johnny / Joanie On The Spot Images — real moments, local or open. Earn by being present." />
+  <meta property="og:title" content="Jotsi — On The Spot Images" />
+  <meta property="og:description" content="See something unusual or interesting? Post it here. Real people. No paid influencers. No AI fakes." />
+  <meta property="og:url" content="https://jotsi.app" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            jotsi: { 50:'#f0f9ff',100:'#e0f2fe',200:'#bae6fd',300:'#7dd3fc',400:'#38bdf8',500:'#0ea5e9',600:'#0284c7',700:'#0369a1',800:'#075985',900:'#0c4a6e' }
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { -webkit-tap-highlight-color: transparent; }
+    body { font-family: 'Inter', system-ui, sans-serif; overscroll-behavior: none; }
+    .safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+    .hide-scrollbar::-webkit-scrollbar { display: none; }
+    .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    .nav-active { color: #0ea5e9; }
+    .nav-active svg { stroke-width: 2.5; }
+    .post-enter { animation: fadeUp 0.3s ease; }
+    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+    .pulse-dot { animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 h-[100dvh] flex flex-col overflow-hidden">
+
+  <!-- ========== ONBOARDING / SIGN-IN ========== -->
+  <div id="screen-auth" class="fixed inset-0 z-50 bg-gradient-to-b from-jotsi-50 to-white flex flex-col items-center justify-center px-6">
+    <!-- Language toggle -->
+    <div class="absolute top-5 right-5 flex items-center bg-white border border-slate-200 rounded-full p-0.5 shadow-sm">
+      <button onclick="setLang('en')" id="lang-en" class="px-3 py-1.5 rounded-full text-xs font-semibold bg-jotsi-500 text-white">EN</button>
+      <button onclick="setLang('es')" id="lang-es" class="px-3 py-1.5 rounded-full text-xs font-semibold text-slate-500">ES</button>
+    </div>
+
+    <div class="w-16 h-16 rounded-2xl bg-jotsi-500 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-jotsi-500/30 mb-6">J</div>
+    <h1 class="text-3xl font-extrabold tracking-tight text-center">Jotsi</h1>
+    <p class="text-jotsi-600 font-semibold mt-1">Johnny / Joanie On The Spot</p>
+    <p id="auth-desc" class="text-slate-500 text-center text-sm mt-4 max-w-xs leading-relaxed">
+      See something unusual, peculiar, or interesting? Post it. Local with location or open to everyone. Earn by time spent. No paid influencers.
+    </p>
+
+    <button onclick="startApp()" id="btn-geo" class="mt-10 w-full max-w-xs bg-jotsi-500 hover:bg-jotsi-600 active:scale-[0.98] text-white font-semibold py-4 rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-jotsi-500/25 transition">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+      <span id="btn-geo-text">Sign in with Geolocation</span>
+    </button>
+    <button onclick="startApp(true)" id="btn-skip" class="mt-3 text-sm text-slate-400 hover:text-slate-600">Continue without location (open forum only)</button>
+
+    <div id="auth-status" class="mt-4 text-sm text-center hidden"></div>
+
+    <div id="auth-footer" class="absolute bottom-8 text-center text-[11px] text-slate-400 px-6">
+      No AI content. Real moments only.<br>Location used for nearby posts & verification.
+    </div>
+  </div>
+
+  <!-- ========== MAIN APP ========== -->
+  <div id="screen-app" class="hidden flex-1 flex flex-col h-full">
+
+    <!-- Top bar -->
+    <header class="flex-shrink-0 bg-white border-b border-slate-200 px-4 h-14 flex items-center justify-between safe-top">
+      <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-lg bg-jotsi-500 text-white text-sm font-bold flex items-center justify-center">J</div>
+        <div>
+          <div class="font-bold text-sm leading-none">Jotsi</div>
+          <div id="loc-label" class="text-[10px] text-slate-400 leading-none mt-0.5">Open forum</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <div class="text-right mr-1">
+          <div id="earn-label" class="text-[10px] text-slate-400">Time earned</div>
+          <div id="earn-display" class="text-sm font-bold text-jotsi-600">0m</div>
+        </div>
+        <!-- Language toggle (compact) -->
+        <div class="flex items-center bg-slate-100 rounded-full p-0.5">
+          <button onclick="setLang('en')" id="lang-en-app" class="px-2 py-1 rounded-full text-[10px] font-bold bg-jotsi-500 text-white">EN</button>
+          <button onclick="setLang('es')" id="lang-es-app" class="px-2 py-1 rounded-full text-[10px] font-bold text-slate-500">ES</button>
+        </div>
+        <button onclick="enterDashMode()" class="w-9 h-9 rounded-full bg-slate-800 text-white flex items-center justify-center" title="Jotsi Dash">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+        </button>
+        <button onclick="openShare()" class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center">
+          <svg class="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Content panels -->
+    <main class="flex-1 overflow-y-auto hide-scrollbar bg-slate-50" id="main-scroll">
+
+      <!-- POST FEED -->
+      <section id="panel-post" class="pb-24">
+        <div class="px-4 pt-3 pb-2 flex items-center justify-between">
+          <h2 id="label-onspot" class="font-semibold text-sm text-slate-500">On the spot</h2>
+          <button onclick="showCompose()" id="btn-newpost" class="text-xs font-semibold text-jotsi-600 bg-jotsi-50 px-3 py-1.5 rounded-full">+ New post</button>
+        </div>
+        <div id="feed" class="px-3 space-y-3"></div>
+      </section>
+
+      <!-- MESSAGES -->
+      <section id="panel-messages" class="hidden pb-24">
+        <div class="px-4 pt-4">
+          <h2 id="label-messages" class="font-semibold text-lg mb-3">Messages</h2>
+          <div id="msg-list" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <!-- SEARCH NEARBY -->
+      <section id="panel-nearby" class="hidden pb-24">
+        <div class="px-4 pt-4">
+          <h2 id="label-nearby" class="font-semibold text-lg mb-1">Search Nearby</h2>
+          <p class="text-xs text-slate-400 mb-4" id="nearby-radius">Showing spots within ~2 miles</p>
+          <div id="nearby-list" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <!-- FOLLOW REQUESTS -->
+      <section id="panel-requests" class="hidden pb-24">
+        <div class="px-4 pt-4">
+          <h2 id="label-requests" class="font-semibold text-lg mb-3">Follow Requests</h2>
+          <div id="req-list" class="space-y-2"></div>
+        </div>
+      </section>
+
+      <!-- JOTSI PLUS -->
+      <section id="panel-plus" class="hidden pb-24">
+        <div class="px-4 pt-4">
+          <div class="bg-gradient-to-br from-jotsi-500 to-sky-600 text-white rounded-2xl p-5 mb-4">
+            <div class="text-xs font-semibold opacity-80">JOTSI PLUS</div>
+            <div id="plus-title" class="text-xl font-bold mt-1">Latest real moments</div>
+            <p id="plus-desc" class="text-sm opacity-90 mt-1">Curated spots the community is still talking about.</p>
+          </div>
+          <div id="plus-list" class="space-y-2"></div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Bottom navigation -->
+    <nav class="flex-shrink-0 bg-white border-t border-slate-200 safe-bottom">
+      <div class="flex items-stretch h-14">
+        <button data-nav="post" class="nav-btn nav-active flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-slate-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+          <span class="nav-label" data-i18n="nav_post">Post</span>
+        </button>
+        <button data-nav="messages" class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-slate-400 relative">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          <span class="nav-label" data-i18n="nav_messages">Messages</span>
+          <span id="msg-badge" class="absolute top-1.5 right-1/4 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center hidden">2</span>
+        </button>
+        <button data-nav="nearby" class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-slate-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+          <span class="nav-label" data-i18n="nav_nearby">Nearby</span>
+        </button>
+        <button data-nav="requests" class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-slate-400 relative">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"/></svg>
+          <span class="nav-label" data-i18n="nav_requests">Requests</span>
+          <span id="req-badge" class="absolute top-1.5 right-1/4 w-4 h-4 bg-jotsi-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">3</span>
+        </button>
+        <button data-nav="plus" class="nav-btn flex-1 flex flex-col items-center justify-center gap-0.5 text-[10px] font-medium text-slate-400">
+          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"/></svg>
+          <span class="nav-label" data-i18n="nav_plus">Plus</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- ========== COMPOSE SHEET ========== -->
+  <div id="compose-sheet" class="fixed inset-0 z-40 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="hideCompose()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-5 safe-bottom max-h-[85vh] overflow-y-auto">
+      <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
+      <h3 id="compose-title" class="font-bold text-lg mb-4">Post on the spot</h3>
+
+      <div class="flex gap-2 mb-4">
+        <button id="scope-local" onclick="setScope('local')" class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-jotsi-500 text-white">📍 Local</button>
+        <button id="scope-open" onclick="setScope('open')" class="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600">🌍 Open forum</button>
+      </div>
+
+      <textarea id="compose-text" rows="3" placeholder="What did you just see that's unusual, peculiar, or interesting?" class="w-full border border-slate-200 rounded-xl p-3 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-jotsi-400"></textarea>
+
+      <div class="mt-3 flex items-center gap-3">
+        <label class="flex items-center gap-2 text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-xl cursor-pointer">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+          <span id="label-addphoto">Add photo</span>
+          <input type="file" id="compose-image" accept="image/*" capture="environment" class="hidden" onchange="previewImage(event)">
+        </label>
+        <div id="img-preview-wrap" class="hidden relative">
+          <img id="img-preview" class="h-12 w-12 object-cover rounded-lg" />
+          <button onclick="clearImage()" class="absolute -top-1.5 -right-1.5 w-5 h-5 bg-slate-800 text-white rounded-full text-xs">×</button>
+        </div>
+      </div>
+
+      <div class="mt-3 flex items-center gap-2 text-xs text-amber-700 bg-amber-50 px-3 py-2 rounded-xl">
+        <span>🛡️</span>
+        <span id="ai-warning">No-AI Bot will scan this post. Synthetic images get flagged.</span>
+      </div>
+
+      <button onclick="submitPost()" id="btn-postit" class="mt-5 w-full bg-jotsi-500 hover:bg-jotsi-600 text-white font-semibold py-3.5 rounded-2xl transition">
+        Post it
+      </button>
+    </div>
+  </div>
+
+  <!-- ========== SHARE SHEET ========== -->
+  <div id="share-sheet" class="fixed inset-0 z-40 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeShare()"></div>
+    <div class="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-5 safe-bottom">
+      <div class="w-10 h-1 bg-slate-200 rounded-full mx-auto mb-4"></div>
+      <h3 class="font-bold text-lg mb-1 text-center">Share Jotsi</h3>
+      <p class="text-sm text-slate-500 text-center mb-5">Tell others about real on-the-spot moments</p>
+      <div class="grid grid-cols-3 gap-3">
+        <button onclick="doShare('x')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-slate-50 active:bg-slate-100">
+          <div class="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center text-lg font-bold">𝕏</div>
+          <span class="text-xs font-medium">X</span>
+        </button>
+        <button onclick="doShare('instagram')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-slate-50 active:bg-slate-100">
+          <div class="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 text-white flex items-center justify-center text-lg">📷</div>
+          <span class="text-xs font-medium">Instagram</span>
+        </button>
+        <button onclick="doShare('facebook')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-slate-50 active:bg-slate-100">
+          <div class="w-11 h-11 rounded-full bg-[#1877F2] text-white flex items-center justify-center text-lg font-bold">f</div>
+          <span class="text-xs font-medium">Facebook</span>
+        </button>
+        <button onclick="doShare('linkedin')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-slate-50 active:bg-slate-100">
+          <div class="w-11 h-11 rounded-full bg-[#0A66C2] text-white flex items-center justify-center text-sm font-bold">in</div>
+          <span class="text-xs font-medium">LinkedIn</span>
+        </button>
+        <button onclick="doShare('threads')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-slate-50 active:bg-slate-100">
+          <div class="w-11 h-11 rounded-full bg-black text-white flex items-center justify-center text-lg">@</div>
+          <span class="text-xs font-medium">Threads</span>
+        </button>
+        <button onclick="doShare('bluesky')" class="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-slate-50 active:bg-slate-100">
+          <div class="w-11 h-11 rounded-full bg-[#0085FF] text-white flex items-center justify-center text-lg">☁</div>
+          <span class="text-xs font-medium">Bluesky</span>
+        </button>
+      </div>
+      <button onclick="copyLink()" class="mt-4 w-full border border-slate-200 py-3 rounded-2xl text-sm font-medium flex items-center justify-center gap-2">
+        📋 Copy link
+      </button>
+      <p id="copy-toast" class="text-center text-xs text-emerald-600 mt-2 hidden">Copied!</p>
+    </div>
+  </div>
+
+  <!-- ========== JOTSI DASH MODE ========== -->
+  <div id="screen-dash" class="fixed inset-0 z-[60] hidden bg-slate-950 text-white flex flex-col">
+    <!-- Safety banner - always visible -->
+    <div class="flex-shrink-0 bg-amber-500 text-slate-900 px-4 py-3 text-center">
+      <div id="dash-safety-title" class="font-bold text-sm tracking-wide">⚠️ DO NOT USE WHILE DRIVING</div>
+      <div id="dash-safety-sub" class="text-[11px] mt-0.5 opacity-90">Jotsi Dash is for parked / docked use only. Eyes on the road.</div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="flex-shrink-0 px-5 py-3 flex items-center justify-between border-b border-white/10">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-xl bg-jotsi-500 flex items-center justify-center font-bold text-sm">J</div>
+        <div>
+          <div class="font-bold text-sm leading-none">Jotsi Dash</div>
+          <div class="text-[10px] text-slate-400 mt-0.5">On The Spot · Docked mode</div>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <!-- WiFi status -->
+        <div class="flex items-center gap-1.5 text-xs">
+          <div id="wifi-indicator" class="w-2 h-2 rounded-full bg-emerald-400 pulse-dot"></div>
+          <span id="wifi-label" class="text-emerald-400 font-medium">WiFi connected</span>
+        </div>
+        <!-- Dock status -->
+        <div class="flex items-center gap-1.5 text-xs">
+          <div id="dock-indicator" class="w-2 h-2 rounded-full bg-emerald-400"></div>
+          <span id="dock-label" class="text-slate-300">Docked</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Dash content - large glanceable cards -->
+    <div class="flex-1 overflow-y-auto hide-scrollbar p-5 space-y-4">
+      <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+        <div class="text-xs text-slate-400 font-medium mb-1">NEARBY SPOTS</div>
+        <div id="dash-nearby" class="space-y-3 mt-3"></div>
+      </div>
+
+      <div class="bg-white/5 border border-white/10 rounded-2xl p-5">
+        <div class="text-xs text-slate-400 font-medium mb-1">LATEST OPEN FORUM</div>
+        <div id="dash-open" class="space-y-3 mt-3"></div>
+      </div>
+
+      <div class="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 text-sm text-amber-100">
+        <div id="dash-rules-title" class="font-semibold mb-1">Safety rules</div>
+        <ul id="dash-rules-list" class="text-xs space-y-1 opacity-90 list-disc list-inside">
+          <li>Do not use while driving</li>
+          <li>Dash connects via WiFi when docked</li>
+          <li>Auto shutoff if removed from dock</li>
+          <li>Intended for parked viewing or passenger use only</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom controls -->
+    <div class="flex-shrink-0 p-4 border-t border-white/10 safe-bottom flex gap-3">
+      <button onclick="simulateUndock()" id="btn-undock" class="flex-1 bg-rose-600 hover:bg-rose-500 text-white font-semibold py-3.5 rounded-2xl text-sm transition">
+        Simulate: Remove from dock
+      </button>
+      <button onclick="exitDashMode()" id="btn-exitdash" class="flex-1 bg-white/10 hover:bg-white/15 text-white font-semibold py-3.5 rounded-2xl text-sm transition">
+        Exit Dash
+      </button>
+    </div>
+  </div>
+
+  <!-- Auto-shutoff overlay -->
+  <div id="dash-shutoff" class="fixed inset-0 z-[70] hidden bg-black flex flex-col items-center justify-center text-center px-8">
+    <div class="text-5xl mb-4">🔌</div>
+    <div id="shutoff-title" class="text-xl font-bold text-white mb-2">Dash auto shutoff</div>
+    <p id="shutoff-desc" class="text-slate-400 text-sm max-w-xs leading-relaxed">
+      Device removed from dock. Jotsi Dash has been turned off for safety.
+    </p>
+    <p id="shutoff-return" class="text-slate-500 text-xs mt-4">Returning to phone mode…</p>
+  </div>
+
+  <script>
+    // ========== i18n ==========
+    let lang = localStorage.getItem('jotsi_lang') || 'en';
+
+    const i18n = {
+      en: {
+        auth_desc: "See something unusual, peculiar, or interesting? Post it. Local with location or open to everyone. Earn by time spent. No paid influencers.",
+        btn_geo: "Sign in with Geolocation",
+        btn_skip: "Continue without location (open forum only)",
+        auth_footer: "No AI content. Real moments only.<br>Location used for nearby posts & verification.",
+        open_forum: "Open forum",
+        local_open: "📍 Local + Open",
+        earn_label: "Time earned",
+        on_the_spot: "On the spot",
+        new_post: "+ New post",
+        messages: "Messages",
+        nearby: "Search Nearby",
+        nearby_radius: "Showing spots within ~2 miles",
+        requests: "Follow Requests",
+        plus_title: "Latest real moments",
+        plus_desc: "Curated spots the community is still talking about.",
+        nav_post: "Post",
+        nav_messages: "Messages",
+        nav_nearby: "Nearby",
+        nav_requests: "Requests",
+        nav_plus: "Plus",
+        compose_title: "Post on the spot",
+        scope_local: "📍 Local",
+        scope_open: "🌍 Open forum",
+        compose_placeholder: "What did you just see that's unusual, peculiar, or interesting?",
+        add_photo: "Add photo",
+        ai_warning: "No-AI Bot will scan this post. Synthetic images get flagged.",
+        post_it: "Post it",
+        dash_safety_title: "⚠️ DO NOT USE WHILE DRIVING",
+        dash_safety_sub: "Jotsi Dash is for parked / docked use only. Eyes on the road.",
+        dash_rules_title: "Safety rules",
+        dash_rule1: "Do not use while driving",
+        dash_rule2: "Dash connects via WiFi when docked",
+        dash_rule3: "Auto shutoff if removed from dock",
+        dash_rule4: "Intended for parked viewing or passenger use only",
+        btn_undock: "Simulate: Remove from dock",
+        btn_exitdash: "Exit Dash",
+        shutoff_title: "Dash auto shutoff",
+        shutoff_desc: "Device removed from dock. Jotsi Dash has been turned off for safety.",
+        shutoff_return: "Returning to phone mode…",
+        share_title: "Share Jotsi",
+        share_sub: "Tell others about real on-the-spot moments",
+        copy_link: "📋 Copy link",
+        accept: "Accept",
+        ignore: "Ignore",
+        no_nearby: "No nearby posts yet. Be the first.",
+        no_requests: "No pending requests",
+        wifi_connected: "WiFi connected",
+        wifi_offline: "WiFi offline",
+        docked: "Docked",
+        undocked: "Undocked"
+      },
+      es: {
+        auth_desc: "¿Ves algo inusual, peculiar o interesante? Publícalo. Local con ubicación o abierto a todos. Gana por tiempo de uso. Sin influencers pagados.",
+        btn_geo: "Iniciar con Geolocalización",
+        btn_skip: "Continuar sin ubicación (solo foro abierto)",
+        auth_footer: "Sin contenido de IA. Solo momentos reales.<br>La ubicación se usa para publicaciones cercanas y verificación.",
+        open_forum: "Foro abierto",
+        local_open: "📍 Local + Abierto",
+        earn_label: "Tiempo ganado",
+        on_the_spot: "En el momento",
+        new_post: "+ Nueva publicación",
+        messages: "Mensajes",
+        nearby: "Buscar cerca",
+        nearby_radius: "Mostrando lugares a ~2 millas",
+        requests: "Solicitudes de seguimiento",
+        plus_title: "Últimos momentos reales",
+        plus_desc: "Lugares seleccionados de los que la comunidad sigue hablando.",
+        nav_post: "Publicar",
+        nav_messages: "Mensajes",
+        nav_nearby: "Cerca",
+        nav_requests: "Solicitudes",
+        nav_plus: "Plus",
+        compose_title: "Publicar en el momento",
+        scope_local: "📍 Local",
+        scope_open: "🌍 Foro abierto",
+        compose_placeholder: "¿Qué acabas de ver que sea inusual, peculiar o interesante?",
+        add_photo: "Añadir foto",
+        ai_warning: "El Bot Anti-IA revisará esta publicación. Las imágenes sintéticas serán marcadas.",
+        post_it: "Publicar",
+        dash_safety_title: "⚠️ NO USAR MIENTRAS CONDUCES",
+        dash_safety_sub: "Jotsi Dash es solo para uso estacionado / en el dock. Ojos en la carretera.",
+        dash_rules_title: "Reglas de seguridad",
+        dash_rule1: "No usar mientras se conduce",
+        dash_rule2: "Dash se conecta por WiFi cuando está en el dock",
+        dash_rule3: "Apagado automático si se retira del dock",
+        dash_rule4: "Diseñado solo para ver estacionado o uso del pasajero",
+        btn_undock: "Simular: Retirar del dock",
+        btn_exitdash: "Salir de Dash",
+        shutoff_title: "Apagado automático de Dash",
+        shutoff_desc: "Dispositivo retirado del dock. Jotsi Dash se ha apagado por seguridad.",
+        shutoff_return: "Volviendo al modo teléfono…",
+        share_title: "Compartir Jotsi",
+        share_sub: "Cuéntale a otros sobre momentos reales al instante",
+        copy_link: "📋 Copiar enlace",
+        accept: "Aceptar",
+        ignore: "Ignorar",
+        no_nearby: "Aún no hay publicaciones cercanas. Sé el primero.",
+        no_requests: "No hay solicitudes pendientes",
+        wifi_connected: "WiFi conectado",
+        wifi_offline: "WiFi desconectado",
+        docked: "En dock",
+        undocked: "Fuera del dock"
+      }
+    };
+
+    function t(key) {
+      return (i18n[lang] && i18n[lang][key]) || i18n.en[key] || key;
+    }
+
+    function setLang(l) {
+      lang = l;
+      localStorage.setItem('jotsi_lang', l);
+      applyLang();
+    }
+
+    function applyLang() {
+      // Auth
+      const authDesc = document.getElementById('auth-desc');
+      if (authDesc) authDesc.textContent = t('auth_desc');
+      const btnGeoText = document.getElementById('btn-geo-text');
+      if (btnGeoText) btnGeoText.textContent = t('btn_geo');
+      const btnSkip = document.getElementById('btn-skip');
+      if (btnSkip) btnSkip.textContent = t('btn_skip');
+      const authFooter = document.getElementById('auth-footer');
+      if (authFooter) authFooter.innerHTML = t('auth_footer');
+
+      // Header
+      const earnLabel = document.getElementById('earn-label');
+      if (earnLabel) earnLabel.textContent = t('earn_label');
+      const locLabel = document.getElementById('loc-label');
+      if (locLabel && !user.hasGeo) locLabel.textContent = t('open_forum');
+      if (locLabel && user.hasGeo) locLabel.textContent = t('local_open');
+
+      // Panels
+      const onspot = document.getElementById('label-onspot');
+      if (onspot) onspot.textContent = t('on_the_spot');
+      const newpost = document.getElementById('btn-newpost');
+      if (newpost) newpost.textContent = t('new_post');
+      const msgLabel = document.getElementById('label-messages');
+      if (msgLabel) msgLabel.textContent = t('messages');
+      const nearLabel = document.getElementById('label-nearby');
+      if (nearLabel) nearLabel.textContent = t('nearby');
+      const nearRadius = document.getElementById('nearby-radius');
+      if (nearRadius) nearRadius.textContent = t('nearby_radius');
+      const reqLabel = document.getElementById('label-requests');
+      if (reqLabel) reqLabel.textContent = t('requests');
+      const plusTitle = document.getElementById('plus-title');
+      if (plusTitle) plusTitle.textContent = t('plus_title');
+      const plusDesc = document.getElementById('plus-desc');
+      if (plusDesc) plusDesc.textContent = t('plus_desc');
+
+      // Nav
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        el.textContent = t(el.dataset.i18n);
+      });
+
+      // Compose
+      const composeTitle = document.getElementById('compose-title');
+      if (composeTitle) composeTitle.textContent = t('compose_title');
+      const scopeLocal = document.getElementById('scope-local');
+      if (scopeLocal) scopeLocal.textContent = t('scope_local');
+      const scopeOpen = document.getElementById('scope-open');
+      if (scopeOpen) scopeOpen.textContent = t('scope_open');
+      const composeText = document.getElementById('compose-text');
+      if (composeText) composeText.placeholder = t('compose_placeholder');
+      const addPhoto = document.getElementById('label-addphoto');
+      if (addPhoto) addPhoto.textContent = t('add_photo');
+      const aiWarn = document.getElementById('ai-warning');
+      if (aiWarn) aiWarn.textContent = t('ai_warning');
+      const btnPostit = document.getElementById('btn-postit');
+      if (btnPostit) btnPostit.textContent = t('post_it');
+
+      // Dash
+      const dashSafetyTitle = document.getElementById('dash-safety-title');
+      if (dashSafetyTitle) dashSafetyTitle.textContent = t('dash_safety_title');
+      const dashSafetySub = document.getElementById('dash-safety-sub');
+      if (dashSafetySub) dashSafetySub.textContent = t('dash_safety_sub');
+      const dashRulesTitle = document.getElementById('dash-rules-title');
+      if (dashRulesTitle) dashRulesTitle.textContent = t('dash_rules_title');
+      const rulesList = document.getElementById('dash-rules-list');
+      if (rulesList) {
+        rulesList.innerHTML = `
+          <li>${t('dash_rule1')}</li>
+          <li>${t('dash_rule2')}</li>
+          <li>${t('dash_rule3')}</li>
+          <li>${t('dash_rule4')}</li>
+        `;
+      }
+      const btnUndock = document.getElementById('btn-undock');
+      if (btnUndock) btnUndock.textContent = t('btn_undock');
+      const btnExit = document.getElementById('btn-exitdash');
+      if (btnExit) btnExit.textContent = t('btn_exitdash');
+      const shutoffTitle = document.getElementById('shutoff-title');
+      if (shutoffTitle) shutoffTitle.textContent = t('shutoff_title');
+      const shutoffDesc = document.getElementById('shutoff-desc');
+      if (shutoffDesc) shutoffDesc.textContent = t('shutoff_desc');
+      const shutoffReturn = document.getElementById('shutoff-return');
+      if (shutoffReturn) shutoffReturn.textContent = t('shutoff_return');
+
+      // Toggle buttons visual state
+      const enBtn = document.getElementById('lang-en');
+      const esBtn = document.getElementById('lang-es');
+      const enApp = document.getElementById('lang-en-app');
+      const esApp = document.getElementById('lang-es-app');
+      if (enBtn && esBtn) {
+        if (lang === 'en') {
+          enBtn.className = 'px-3 py-1.5 rounded-full text-xs font-semibold bg-jotsi-500 text-white';
+          esBtn.className = 'px-3 py-1.5 rounded-full text-xs font-semibold text-slate-500';
+        } else {
+          esBtn.className = 'px-3 py-1.5 rounded-full text-xs font-semibold bg-jotsi-500 text-white';
+          enBtn.className = 'px-3 py-1.5 rounded-full text-xs font-semibold text-slate-500';
+        }
+      }
+      if (enApp && esApp) {
+        if (lang === 'en') {
+          enApp.className = 'px-2 py-1 rounded-full text-[10px] font-bold bg-jotsi-500 text-white';
+          esApp.className = 'px-2 py-1 rounded-full text-[10px] font-bold text-slate-500';
+        } else {
+          esApp.className = 'px-2 py-1 rounded-full text-[10px] font-bold bg-jotsi-500 text-white';
+          enApp.className = 'px-2 py-1 rounded-full text-[10px] font-bold text-slate-500';
+        }
+      }
+
+      // Re-render dynamic content that has translated strings
+      if (typeof renderNearby === 'function') renderNearby();
+      if (typeof renderRequests === 'function') renderRequests();
+      if (typeof updateDashStatus === 'function' && dashActive) updateDashStatus();
+    }
+
+    // ========== STATE ==========
+    const JOTSI_URL = 'https://jotsi.app';
+    let user = { name: 'You', lat: null, lng: null, hasGeo: false };
+    let scope = 'local';
+    let imageData = null;
+    let secondsOnApp = parseInt(localStorage.getItem('jotsi_seconds') || '0');
+    let sessionStart = Date.now();
+    let posts = JSON.parse(localStorage.getItem('jotsi_posts') || 'null') || getSeedPosts();
+    let messages = getSeedMessages();
+    let requests = getSeedRequests();
+
+    // ========== SEED DATA ==========
+    function getSeedPosts() {
+      return [
+        { id: 1, user: 'JoanieR', loc: 'Sacramento', scope: 'local', text: 'Fox just walked across the parking lot at the Target on Florin like it owned the place.', time: '2m', likes: 48, replies: 12, emoji: '🦊', ai: false },
+        { id: 2, user: 'MikeOnSpot', loc: 'Open', scope: 'open', text: 'Construction crane operator waving at kids every time the school bus stops. Pure gold.', time: '14m', likes: 312, replies: 47, emoji: '🏗️', ai: false },
+        { id: 3, user: 'TruePeculiar', loc: '0.4 mi', scope: 'local', text: 'Someone left a perfectly good couch on the curb with a handwritten “free therapy” sign. Already has three notes.', time: '41m', likes: 89, replies: 23, emoji: '🛋️', ai: false },
+        { id: 4, user: 'NeighborhoodLens', loc: 'Open', scope: 'open', text: 'Dog wearing sunglasses sitting in the driver’s seat of a parked car. No owner in sight.', time: '1h', likes: 201, replies: 34, emoji: '🕶️', ai: false }
+      ];
+    }
+    function getSeedMessages() {
+      return [
+        { from: 'Alex', preview: 'That fox was still hanging around when I got there…', time: 'now', unread: true },
+        { from: 'SaraSpots', preview: 'You free to meet at the river trail later?', time: '12m', unread: true },
+        { from: 'Jotsi Team', preview: 'Welcome! Your first post will appear in the feed.', time: '1h', unread: false }
+      ];
+    }
+    function getSeedRequests() {
+      return [
+        { name: 'TruePeculiar', mutual: 12, area: 'Sacramento' },
+        { name: 'NeighborhoodLens', mutual: 3, area: null },
+        { name: 'SpotHunterCA', mutual: 7, area: 'Bay Area' }
+      ];
+    }
+
+    // ========== AUTH ==========
+    function startApp(skipGeo = false) {
+      const status = document.getElementById('auth-status');
+      if (skipGeo) {
+        finishAuth(false);
+        return;
+      }
+      status.classList.remove('hidden');
+      status.innerHTML = '<span class="text-jotsi-600">Requesting location…</span>';
+
+      if (!navigator.geolocation) {
+        status.innerHTML = '<span class="text-rose-500">Geolocation not available. Continuing in open mode.</span>';
+        setTimeout(() => finishAuth(false), 1200);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          user.lat = pos.coords.latitude;
+          user.lng = pos.coords.longitude;
+          user.hasGeo = true;
+          status.innerHTML = '<span class="text-emerald-600">Location received ✓</span>';
+          setTimeout(() => finishAuth(true), 600);
+        },
+        () => {
+          status.innerHTML = '<span class="text-amber-600">Location denied. Open forum mode.</span>';
+          setTimeout(() => finishAuth(false), 1000);
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    }
+
+    function finishAuth(hasGeo) {
+      document.getElementById('screen-auth').classList.add('hidden');
+      document.getElementById('screen-app').classList.remove('hidden');
+      document.getElementById('screen-app').classList.add('flex');
+      user.hasGeo = hasGeo;
+      document.getElementById('loc-label').textContent = hasGeo ? t('local_open') : t('open_forum');
+      renderFeed();
+      renderMessages();
+      renderNearby();
+      renderRequests();
+      renderPlus();
+      startTimeTracker();
+      applyLang();
+    }
+
+    // Apply language on first load
+    applyLang();
+
+    // ========== NAV ==========
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const target = btn.dataset.nav;
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('nav-active'));
+        btn.classList.add('nav-active');
+        ['post','messages','nearby','requests','plus'].forEach(id => {
+          document.getElementById('panel-' + id).classList.add('hidden');
+        });
+        document.getElementById('panel-' + target).classList.remove('hidden');
+        document.getElementById('main-scroll').scrollTop = 0;
+
+        if (target === 'messages') {
+          document.getElementById('msg-badge').classList.add('hidden');
+        }
+        if (target === 'requests') {
+          document.getElementById('req-badge').classList.add('hidden');
+        }
+      });
+    });
+
+    // ========== RENDER ==========
+    function renderFeed() {
+      const feed = document.getElementById('feed');
+      feed.innerHTML = posts.map(p => `
+        <article class="bg-white rounded-2xl p-3.5 shadow-sm border border-slate-100 post-enter">
+          <div class="flex items-center gap-2.5 mb-2.5">
+            <div class="w-9 h-9 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-600">${p.user.slice(0,2).toUpperCase()}</div>
+            <div class="flex-1 min-w-0">
+              <div class="text-sm font-semibold truncate">${p.user} · ${p.loc}</div>
+              <div class="text-[10px] text-slate-400">${p.time} · ${p.scope === 'local' ? '📍 Local' : '🌍 Open'}</div>
+            </div>
+            ${p.ai ? '<span class="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">AI flagged</span>' : ''}
+          </div>
+          ${p.emoji ? `<div class="aspect-[4/3] bg-gradient-to-br from-slate-100 to-slate-200 rounded-xl mb-2.5 flex items-center justify-center text-5xl">${p.emoji}</div>` : ''}
+          ${p.image ? `<img src="${p.image}" class="w-full aspect-[4/3] object-cover rounded-xl mb-2.5" />` : ''}
+          <p class="text-sm text-slate-800 leading-snug">${escapeHtml(p.text)}</p>
+          <div class="flex items-center justify-between mt-3">
+            <div class="flex gap-4 text-xs text-slate-500">
+              <button onclick="likePost(${p.id})" class="flex items-center gap-1">❤️ <span id="likes-${p.id}">${p.likes}</span></button>
+              <span>💬 ${p.replies}</span>
+            </div>
+            <button onclick="sharePostText('${escapeAttr(p.text)}')" class="text-xs font-medium text-jotsi-600">Share</button>
+          </div>
+        </article>
+      `).join('');
+    }
+
+    function renderMessages() {
+      document.getElementById('msg-list').innerHTML = messages.map(m => `
+        <div class="bg-white rounded-2xl p-3.5 flex items-center gap-3 border border-slate-100">
+          <div class="w-11 h-11 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold text-slate-600">${m.from.slice(0,2)}</div>
+          <div class="flex-1 min-w-0">
+            <div class="flex justify-between">
+              <span class="text-sm font-semibold">${m.from}</span>
+              <span class="text-[10px] text-slate-400">${m.time}</span>
+            </div>
+            <p class="text-xs text-slate-500 truncate ${m.unread ? 'font-medium text-slate-700' : ''}">${m.preview}</p>
+          </div>
+          ${m.unread ? '<div class="w-2.5 h-2.5 rounded-full bg-jotsi-500"></div>' : ''}
+        </div>
+      `).join('');
+    }
+
+    function renderNearby() {
+      const nearby = posts.filter(p => p.scope === 'local').slice(0, 6);
+      document.getElementById('nearby-list').innerHTML = nearby.length ? nearby.map(p => `
+        <div class="bg-white rounded-2xl p-3.5 border border-slate-100">
+          <div class="text-[10px] text-jotsi-600 font-medium mb-1">${p.loc} · ${p.time}</div>
+          <p class="text-sm font-medium leading-snug">${escapeHtml(p.text)}</p>
+        </div>
+      `).join('') : `<p class="text-sm text-slate-400 text-center py-8">${t('no_nearby')}</p>`;
+    }
+
+    function renderRequests() {
+      document.getElementById('req-list').innerHTML = requests.map((r, i) => `
+        <div class="bg-white rounded-2xl p-3.5 flex items-center justify-between border border-slate-100" id="req-${i}">
+          <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-full bg-slate-200 flex items-center justify-center text-sm font-bold">${r.name.slice(0,2)}</div>
+            <div>
+              <div class="text-sm font-semibold">${r.name}</div>
+              <div class="text-[10px] text-slate-400">${r.mutual} mutual${r.area ? ' · ' + r.area : ''}</div>
+            </div>
+          </div>
+          <div class="flex gap-2">
+            <button onclick="acceptReq(${i})" class="text-xs bg-jotsi-500 text-white px-3 py-1.5 rounded-full font-semibold">${t('accept')}</button>
+            <button onclick="ignoreReq(${i})" class="text-xs border border-slate-200 px-3 py-1.5 rounded-full">${t('ignore')}</button>
+          </div>
+        </div>
+      `).join('') || `<p class="text-sm text-slate-400 text-center py-8">${t('no_requests')}</p>`;
+    }
+
+    function renderPlus() {
+      const top = [...posts].sort((a,b) => b.likes - a.likes).slice(0, 4);
+      document.getElementById('plus-list').innerHTML = top.map(p => `
+        <div class="bg-white rounded-2xl p-3.5 border border-slate-100">
+          <div class="text-[10px] text-slate-400 mb-1">${p.likes} engagements · ${p.scope === 'local' ? 'Local' : 'Open'}</div>
+          <p class="text-sm font-medium">${escapeHtml(p.text)}</p>
+        </div>
+      `).join('');
+    }
+
+    // ========== COMPOSE ==========
+    function showCompose() {
+      document.getElementById('compose-sheet').classList.remove('hidden');
+      document.getElementById('compose-text').focus();
+    }
+    function hideCompose() {
+      document.getElementById('compose-sheet').classList.add('hidden');
+      document.getElementById('compose-text').value = '';
+      clearImage();
+    }
+    function setScope(s) {
+      scope = s;
+      document.getElementById('scope-local').className = s === 'local'
+        ? 'flex-1 py-2.5 rounded-xl text-sm font-semibold bg-jotsi-500 text-white'
+        : 'flex-1 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600';
+      document.getElementById('scope-open').className = s === 'open'
+        ? 'flex-1 py-2.5 rounded-xl text-sm font-semibold bg-jotsi-500 text-white'
+        : 'flex-1 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600';
+    }
+    function previewImage(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        imageData = ev.target.result;
+        document.getElementById('img-preview').src = imageData;
+        document.getElementById('img-preview-wrap').classList.remove('hidden');
+      };
+      reader.readAsDataURL(file);
+    }
+    function clearImage() {
+      imageData = null;
+      document.getElementById('compose-image').value = '';
+      document.getElementById('img-preview-wrap').classList.add('hidden');
+    }
+
+    function submitPost() {
+      const text = document.getElementById('compose-text').value.trim();
+      if (!text && !imageData) {
+        alert('Add a description or a photo.');
+        return;
+      }
+      // Simple client-side "AI flag" simulation: if text contains certain patterns or no real context
+      const aiFlagged = /generated|midjourney|dall-e|ai art|stable diffusion/i.test(text);
+
+      const newPost = {
+        id: Date.now(),
+        user: user.name,
+        loc: user.hasGeo && scope === 'local' ? 'Near you' : 'Open',
+        scope: scope,
+        text: text || 'Photo post',
+        time: 'just now',
+        likes: 0,
+        replies: 0,
+        emoji: imageData ? null : '📸',
+        image: imageData,
+        ai: aiFlagged
+      };
+      posts.unshift(newPost);
+      localStorage.setItem('jotsi_posts', JSON.stringify(posts.slice(0, 50)));
+      hideCompose();
+      renderFeed();
+      renderNearby();
+      renderPlus();
+      // switch to feed
+      document.querySelector('[data-nav="post"]').click();
+    }
+
+    // ========== INTERACTIONS ==========
+    function likePost(id) {
+      const p = posts.find(x => x.id === id);
+      if (p) {
+        p.likes++;
+        document.getElementById('likes-' + id).textContent = p.likes;
+        localStorage.setItem('jotsi_posts', JSON.stringify(posts));
+      }
+    }
+    function acceptReq(i) {
+      document.getElementById('req-' + i)?.remove();
+      requests.splice(i, 1);
+    }
+    function ignoreReq(i) {
+      document.getElementById('req-' + i)?.remove();
+      requests.splice(i, 1);
+    }
+
+    // ========== TIME / EARN ==========
+    function startTimeTracker() {
+      setInterval(() => {
+        secondsOnApp += 1;
+        localStorage.setItem('jotsi_seconds', secondsOnApp);
+        const m = Math.floor(secondsOnApp / 60);
+        const s = secondsOnApp % 60;
+        document.getElementById('earn-display').textContent = m > 0 ? `${m}m ${s}s` : `${s}s`;
+      }, 1000);
+    }
+
+    // ========== SHARE ==========
+    let shareText = 'See something unusual or interesting? Post it on the spot. Real moments only. No paid influencers. 👀';
+    function openShare() {
+      document.getElementById('share-sheet').classList.remove('hidden');
+    }
+    function closeShare() {
+      document.getElementById('share-sheet').classList.add('hidden');
+    }
+    function sharePostText(t) {
+      shareText = t + ' — spotted on Jotsi 👀';
+      openShare();
+    }
+    function doShare(platform) {
+      const text = encodeURIComponent(shareText);
+      const url = encodeURIComponent(JOTSI_URL);
+      const full = encodeURIComponent(shareText + ' ' + JOTSI_URL);
+      const map = {
+        x: `https://twitter.com/intent/tweet?text=${text}&url=${url}`,
+        facebook: `https://www.facebook.com/sharer/sharer.php?u=${url}`,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${url}`,
+        threads: `https://www.threads.net/intent/post?text=${full}`,
+        bluesky: `https://bsky.app/intent/compose?text=${full}`,
+        instagram: null
+      };
+      if (platform === 'instagram') {
+        navigator.clipboard.writeText(shareText + '\n' + JOTSI_URL);
+        window.open('https://www.instagram.com/', '_blank');
+        alert('Link copied — paste it into your Instagram Story or post.');
+        return;
+      }
+      window.open(map[platform], '_blank', 'noopener,width=580,height=500');
+    }
+    function copyLink() {
+      navigator.clipboard.writeText(shareText + '\n' + JOTSI_URL).then(() => {
+        const t = document.getElementById('copy-toast');
+        t.classList.remove('hidden');
+        setTimeout(() => t.classList.add('hidden'), 1800);
+      });
+    }
+
+    // ========== UTILS ==========
+    function escapeHtml(s) {
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function escapeAttr(s) {
+      return String(s).replace(/'/g, "\\'").replace(/"/g, '&quot;');
+    }
+
+    // ========== JOTSI DASH ==========
+    let dashActive = false;
+    let docked = true;
+    let wifiConnected = true;
+
+    function enterDashMode() {
+      dashActive = true;
+      docked = true;
+      wifiConnected = true;
+      updateDashStatus();
+      renderDashContent();
+      document.getElementById('screen-dash').classList.remove('hidden');
+      document.getElementById('screen-dash').classList.add('flex');
+      document.getElementById('dash-shutoff').classList.add('hidden');
+    }
+
+    function exitDashMode() {
+      dashActive = false;
+      document.getElementById('screen-dash').classList.add('hidden');
+      document.getElementById('screen-dash').classList.remove('flex');
+      document.getElementById('dash-shutoff').classList.add('hidden');
+    }
+
+    function updateDashStatus() {
+      const wifiInd = document.getElementById('wifi-indicator');
+      const wifiLab = document.getElementById('wifi-label');
+      const dockInd = document.getElementById('dock-indicator');
+      const dockLab = document.getElementById('dock-label');
+
+      if (wifiConnected) {
+        wifiInd.className = 'w-2 h-2 rounded-full bg-emerald-400 pulse-dot';
+        wifiLab.className = 'text-emerald-400 font-medium';
+        wifiLab.textContent = t('wifi_connected');
+      } else {
+        wifiInd.className = 'w-2 h-2 rounded-full bg-rose-500';
+        wifiLab.className = 'text-rose-400 font-medium';
+        wifiLab.textContent = t('wifi_offline');
+      }
+
+      if (docked) {
+        dockInd.className = 'w-2 h-2 rounded-full bg-emerald-400';
+        dockLab.className = 'text-slate-300';
+        dockLab.textContent = t('docked');
+      } else {
+        dockInd.className = 'w-2 h-2 rounded-full bg-rose-500';
+        dockLab.className = 'text-rose-400';
+        dockLab.textContent = t('undocked');
+      }
+    }
+
+    function renderDashContent() {
+      const nearby = posts.filter(p => p.scope === 'local').slice(0, 3);
+      const open = posts.filter(p => p.scope === 'open').slice(0, 3);
+
+      document.getElementById('dash-nearby').innerHTML = nearby.length
+        ? nearby.map(p => `
+            <div class="flex gap-3 items-start">
+              <div class="text-2xl leading-none">${p.emoji || '📍'}</div>
+              <div>
+                <div class="text-sm font-medium leading-snug">${escapeHtml(p.text)}</div>
+                <div class="text-[10px] text-slate-500 mt-0.5">${p.loc} · ${p.time}</div>
+              </div>
+            </div>
+          `).join('')
+        : '<p class="text-sm text-slate-500">No nearby spots right now.</p>';
+
+      document.getElementById('dash-open').innerHTML = open.length
+        ? open.map(p => `
+            <div class="flex gap-3 items-start">
+              <div class="text-2xl leading-none">${p.emoji || '🌍'}</div>
+              <div>
+                <div class="text-sm font-medium leading-snug">${escapeHtml(p.text)}</div>
+                <div class="text-[10px] text-slate-500 mt-0.5">${p.user} · ${p.time}</div>
+              </div>
+            </div>
+          `).join('')
+        : '<p class="text-sm text-slate-500">Open forum is quiet.</p>';
+    }
+
+    function simulateUndock() {
+      if (!dashActive) return;
+      docked = false;
+      updateDashStatus();
+
+      // Auto shutoff sequence
+      setTimeout(() => {
+        document.getElementById('dash-shutoff').classList.remove('hidden');
+        document.getElementById('dash-shutoff').classList.add('flex');
+      }, 600);
+
+      setTimeout(() => {
+        exitDashMode();
+      }, 2800);
+    }
+
+    // Optional: simulate WiFi drop for testing
+    function toggleWifi() {
+      wifiConnected = !wifiConnected;
+      updateDashStatus();
+    }
+
+    // Auto-start if already used before (optional convenience)
+    // if (localStorage.getItem('jotsi_seconds')) { /* could auto-enter */ }
+  </script>
+</body>
+</html>
