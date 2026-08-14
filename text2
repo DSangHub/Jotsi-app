@@ -1,0 +1,11 @@
+jotsi-app/
+├── index.html      # UI + bilingual + Dash + auth forms
+├── api.js          # Backend client
+├── manifest.json
+├── sw.js
+├── icons/
+└── backend/
+    ├── server.js
+    ├── db.js
+    ├── package.json
+    └── README.md
