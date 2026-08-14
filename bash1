@@ -1,0 +1,5 @@
+# terminal 1
+cd backend && npm install && npm start
+
+# terminal 2
+npx serve .
