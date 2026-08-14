@@ -1,0 +1,3 @@
+JWT_SECRET=long-random-secret \
+CLIENT_ORIGIN=https://jotsi.app \
+npm start
